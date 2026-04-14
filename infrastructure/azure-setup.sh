@@ -32,7 +32,7 @@ done
 
 # Configuration variables - CUSTOMIZE THESE
 RESOURCE_GROUP="recipe-cookbook-rg"
-LOCATION="norwayeast"  # Change to your preferred region (e.g., "eastus", "northeurope")
+LOCATION="swedencentral"  # Change to your preferred region (e.g., "eastus", "northeurope")
 NGINX_VM_NAME="recipe-cookbook-nginx-vm"
 BACKEND_VM_NAME="recipe-cookbook-backend-vm"
 VM_SIZE="Standard_B1s"  # Change to "Standard_B2s" for better performance
@@ -155,9 +155,20 @@ az vm create \
     --vnet-name "$VNET_NAME" \
     --subnet "$SUBNET_NAME" \
     --public-ip-sku Standard \
-    --output table
+    --no-wait \
+    --output none
 
-echo -e "${GREEN}✅ nginx VM created${NC}"
+echo "nginx VM creation started (running in background)..."
+echo "Waiting for nginx VM to be provisioned..."
+sleep 60
+
+# Check if VM was created successfully
+if az vm show --resource-group "$RESOURCE_GROUP" --name "$NGINX_VM_NAME" &> /dev/null; then
+    echo -e "${GREEN}✅ nginx VM created${NC}"
+else
+    echo -e "${RED}❌ Failed to create nginx VM${NC}"
+    exit 1
+fi
 
 # Create backend VM
 echo ""
@@ -179,9 +190,20 @@ az vm create \
     --vnet-name "$VNET_NAME" \
     --subnet "$SUBNET_NAME" \
     --public-ip-sku Standard \
-    --output table
+    --no-wait \
+    --output none
 
-echo -e "${GREEN}✅ backend VM created${NC}"
+echo "backend VM creation started (running in background)..."
+echo "Waiting for backend VM to be provisioned..."
+sleep 60
+
+# Check if VM was created successfully
+if az vm show --resource-group "$RESOURCE_GROUP" --name "$BACKEND_VM_NAME" &> /dev/null; then
+    echo -e "${GREEN}✅ backend VM created${NC}"
+else
+    echo -e "${RED}❌ Failed to create backend VM${NC}"
+    exit 1
+fi
 
 # Configure network security for nginx VM (ports 80 and 443)
 echo ""
@@ -249,8 +271,8 @@ echo "nginx will proxy to backend via private IP: $BACKEND_PRIVATE_IP:8080"
 
 # Wait for VMs to be fully ready
 echo ""
-echo "Waiting for VMs to be fully ready..."
-sleep 30
+echo "Waiting for VMs to be fully ready (this may take several minutes)..."
+sleep 120
 
 # Helper function to set up a single VM
 setup_vm() {
