@@ -1,3 +1,12 @@
+# Things about how to run newest and hottest - azure with nginx with docker
+use
+az group delete --name rg-ostemadprinsesse-cookbook --yes
+to tear down the ressource group
+
+stay tuned to know if we will get it to work lol
+
+
+
 # Awesome recipe cookbook
 Demo DevOps repository for use in teachings in It-architechture, cloud and agil udvikling at EK ITA Spring 2026
 
