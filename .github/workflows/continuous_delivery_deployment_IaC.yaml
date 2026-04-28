@@ -61,12 +61,19 @@ jobs:
         run: |
           echo "GITHUB_OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" > .env
 
+      - name: Preflight SSH to nginx bastion
+        run: |
+          ssh -v -i ~/.ssh/ssh_key \
+            -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null \
+            "$SSH_USER@$SSH_HOST_NGINX" "echo 'bastion-ok'"
+
       - name: Transfer .env file to backend VM (via nginx bastion)
         run: |
           scp -v -i ~/.ssh/ssh_key \
             -o StrictHostKeyChecking=no \
             -o UserKnownHostsFile=/dev/null \
-            -o ProxyJump="$SSH_USER@$SSH_HOST_NGINX" \
+            -o ProxyCommand="ssh -i ~/.ssh/ssh_key -W %h:%p -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $SSH_USER@$SSH_HOST_NGINX" \
             .env "$SSH_USER@$SSH_HOST_BACKEND:.env"
 
       - name: Transfer Docker Compose file to backend VM (via nginx bastion)
@@ -74,7 +81,7 @@ jobs:
           scp -v -i ~/.ssh/ssh_key \
             -o StrictHostKeyChecking=no \
             -o UserKnownHostsFile=/dev/null \
-            -o ProxyJump="$SSH_USER@$SSH_HOST_NGINX" \
+            -o ProxyCommand="ssh -i ~/.ssh/ssh_key -W %h:%p -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $SSH_USER@$SSH_HOST_NGINX" \
             src/docker-compose.backend.yml "$SSH_USER@$SSH_HOST_BACKEND:docker-compose.yml"
 
       - name: Deploy backend with GHCR login (via nginx bastion)
@@ -82,7 +89,7 @@ jobs:
           ssh -v -i ~/.ssh/ssh_key \
             -o StrictHostKeyChecking=no \
             -o UserKnownHostsFile=/dev/null \
-            -o ProxyJump="$SSH_USER@$SSH_HOST_NGINX" \
+            -o ProxyCommand="ssh -i ~/.ssh/ssh_key -W %h:%p -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $SSH_USER@$SSH_HOST_NGINX" \
             "$SSH_USER@$SSH_HOST_BACKEND" << EOF
             set -euo pipefail
             # Log in to GHCR so docker compose can pull private images
