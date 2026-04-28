@@ -1,3 +1,32 @@
+# Notes from the human on why we made this file / uses the knowledge
+2. Skill Guide for dit næste projekt
+Lavet AZURE_TWO_VM_DEPLOYMENT_SKILL.md — en fuld implementeringsguide som:
+
+Forklarer arkitekturen (offentlig nginx + privat backend)
+Gennemgår hver setup-step
+Håndterer variationer (andre ports, andre proxy'er, HAProxy i stedet for nginx, etc.)
+Inkluderer troubleshooting tips
+Giver konkrete eksempler på tilpasninger
+Sådan bruges den til dit "Dinner Served and Ate" projekt:
+
+Først: Se om projektet har en proxy-branch med nginx setup. Hvis ja, align den med docker-compose.nginx.yml format fra denne guide.
+
+Kopier scripterne:
+
+setup_azure_vms.sh
+teardown_azure_vms.sh
+Tilpas GITHUB_REPO, RESOURCE_GROUP, LOCATION til dit projekt.
+
+Kopier workflow: Tag continuous_delivery_deployment_IaC.yaml og tilpas det til dit project layout (andre container navne, porte, osv.).
+
+Stil spørgsmål i skill-guiden:
+
+Kører i-projektet på port 8080 eller noget tredje?
+Bruger det nginx eller noget helt tredje?
+Er docker-composefiler struktureret på samme måde?
+
+
+
 # Azure Two-VM Deployment Skill Guide
 
 **Purpose:** Template and workflow for setting up a two-VM deployment on Azure (one public nginx proxy, one private backend) with Docker and GitHub Actions IaC integration.

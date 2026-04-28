@@ -79,7 +79,7 @@ jobs:
           ssh -i ~/.ssh/ssh_key \
             -o StrictHostKeyChecking=no \
             -o ProxyJump="$SSH_USER@$SSH_HOST_NGINX" \
-            "$SSH_USER@$SSH_HOST_BACKEND" << "EOF"
+            "$SSH_USER@$SSH_HOST_BACKEND" << EOF
             set -euo pipefail
             # Log in to GHCR so docker compose can pull private images
             echo "$CR_PAT" | docker login ghcr.io -u "$DOCKER_GITHUB_USERNAME" --password-stdin
@@ -127,7 +127,7 @@ jobs:
 
       - name: Deploy nginx with GHCR login
         run: |
-          ssh -i ~/.ssh/ssh_key -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST << "EOF"
+          ssh -i ~/.ssh/ssh_key -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST << EOF
             set -euo pipefail
             # Log in to GHCR so docker compose can pull private images
             echo "$CR_PAT" | docker login ghcr.io -u "$DOCKER_GITHUB_USERNAME" --password-stdin
