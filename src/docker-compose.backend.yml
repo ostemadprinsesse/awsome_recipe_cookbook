@@ -1,7 +1,14 @@
 services:
   backend:
     image: ghcr.io/${GITHUB_OWNER}/awsome_recipe_cookbook_proxy:latest
+    pull_policy: always
     environment:
       - FLASK_ENV=production
     ports:
       - "8080:8080"
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

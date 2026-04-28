@@ -21,14 +21,6 @@ jobs:
       - name: Check Out Repository
         uses: actions/checkout@v4
 
-      - name: Validate backend deploy secrets
-        run: |
-          [[ -n "$SSH_USER" ]] || { echo "Missing secret: SSH_USER"; exit 1; }
-          [[ -n "$SSH_HOST_NGINX" ]] || { echo "Missing secret: SSH_HOST_NGINX"; exit 1; }
-          [[ -n "$SSH_HOST_BACKEND" ]] || { echo "Missing secret: BACKEND_PRIVATE_IP"; exit 1; }
-          [[ -n "$CR_PAT" ]] || { echo "Missing secret: CR_PAT"; exit 1; }
-          [[ -n "$DOCKER_GITHUB_USERNAME" ]] || { echo "Missing secret: DOCKER_GITHUB_USERNAME"; exit 1; }
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
@@ -55,6 +47,14 @@ jobs:
     steps:
       - name: Check Out Repository
         uses: actions/checkout@v4
+
+      - name: Validate backend deploy secrets
+        run: |
+          [[ -n "$SSH_USER" ]] || { echo "Missing secret: SSH_USER"; exit 1; }
+          [[ -n "$SSH_HOST_NGINX" ]] || { echo "Missing secret: SSH_HOST_NGINX"; exit 1; }
+          [[ -n "$SSH_HOST_BACKEND" ]] || { echo "Missing secret: BACKEND_PRIVATE_IP"; exit 1; }
+          [[ -n "$CR_PAT" ]] || { echo "Missing secret: CR_PAT"; exit 1; }
+          [[ -n "$DOCKER_GITHUB_USERNAME" ]] || { echo "Missing secret: DOCKER_GITHUB_USERNAME"; exit 1; }
 
       - name: Add SSH key to runner
         run: |
