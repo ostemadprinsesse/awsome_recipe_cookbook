@@ -1,0 +1,14 @@
+services:
+  nginx:
+    image: ghcr.io/${GITHUB_OWNER}/awsome_recipe_cookbook_proxy_nginx:latest
+    pull_policy: always
+    environment:
+      - BACKEND_PRIVATE_IP=${BACKEND_PRIVATE_IP}
+    ports:
+      - "80:80"
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

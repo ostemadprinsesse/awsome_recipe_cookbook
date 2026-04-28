@@ -167,3 +167,6 @@ ignore/*
 # Terraform files (only for master branch)
 terraform/
 
+.ruff_cache
+
+.claude

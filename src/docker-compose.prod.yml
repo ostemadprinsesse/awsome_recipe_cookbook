@@ -1,0 +1,26 @@
+services:
+  backend:
+    image: ghcr.io/${GITHUB_OWNER}/awsome_recipe_cookbook_proxy:latest
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    environment:
+      - FLASK_ENV=production
+    networks:
+      - app-network
+
+  nginx:
+    image: ghcr.io/${GITHUB_OWNER}/awsome_recipe_cookbook_proxy_nginx:latest
+    build:
+      context: ./network
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

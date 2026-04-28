@@ -1,0 +1,168 @@
+name: Continuous Deployment - IaC
+
+on:
+  push:
+    branches: [IaC]
+  pull_request:
+    branches: [IaC]
+  workflow_dispatch:
+
+env:
+  CR_PAT: ${{ secrets.CR_PAT }}
+  DOCKER_GITHUB_USERNAME: ${{ secrets.DOCKER_GITHUB_USERNAME }}
+  ENV_GREETING: ${{ secrets.ENV_GREETING }}
+  # Lowercase owner — GHCR requires lowercase registry paths
+  GITHUB_OWNER: ${{ github.repository_owner }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Out Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        run: echo ${{ env.CR_PAT }} | docker login ghcr.io -u ${{ env.DOCKER_GITHUB_USERNAME }} --password-stdin
+
+      - name: Build and Push Docker Images
+        working-directory: ./src
+        run: |
+          GITHUB_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          GITHUB_OWNER=$GITHUB_OWNER docker buildx bake -f docker-compose.prod.yml \
+            --set *.platform=linux/amd64,linux/arm64 --push
+
+  deploy-backend:
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      SSH_USER: ${{ secrets.SSH_USER }}
+      SSH_HOST_NGINX: ${{ secrets.SSH_HOST_NGINX }}
+      SSH_HOST_BACKEND: ${{ secrets.BACKEND_PRIVATE_IP }}
+      CR_PAT: ${{ secrets.CR_PAT }}
+      DOCKER_GITHUB_USERNAME: ${{ secrets.DOCKER_GITHUB_USERNAME }}
+
+    steps:
+      - name: Check Out Repository
+        uses: actions/checkout@v4
+
+      - name: Validate backend deploy secrets
+        run: |
+          [[ -n "$SSH_USER" ]] || { echo "Missing secret: SSH_USER"; exit 1; }
+          [[ -n "$SSH_HOST_NGINX" ]] || { echo "Missing secret: SSH_HOST_NGINX"; exit 1; }
+          [[ -n "$SSH_HOST_BACKEND" ]] || { echo "Missing secret: BACKEND_PRIVATE_IP"; exit 1; }
+          [[ -n "$CR_PAT" ]] || { echo "Missing secret: CR_PAT"; exit 1; }
+          [[ -n "$DOCKER_GITHUB_USERNAME" ]] || { echo "Missing secret: DOCKER_GITHUB_USERNAME"; exit 1; }
+
+      - name: Add SSH key to runner
+        run: |
+          mkdir -p ~/.ssh/
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/ssh_key
+          chmod 600 ~/.ssh/ssh_key
+          ssh-keygen -l -f ~/.ssh/ssh_key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Create .env file for backend
+        run: |
+          echo "GITHUB_OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" > .env
+
+      - name: Preflight SSH to nginx bastion
+        run: |
+          ssh -v -i ~/.ssh/ssh_key \
+            -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null \
+            "$SSH_USER@$SSH_HOST_NGINX" "echo 'bastion-ok'"
+
+      - name: Transfer .env file to backend VM (via nginx bastion)
+        run: |
+          scp -v -i ~/.ssh/ssh_key \
+            -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null \
+            -o ProxyCommand="ssh -i ~/.ssh/ssh_key -W %h:%p -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $SSH_USER@$SSH_HOST_NGINX" \
+            .env "$SSH_USER@$SSH_HOST_BACKEND:.env"
+
+      - name: Transfer Docker Compose file to backend VM (via nginx bastion)
+        run: |
+          scp -v -i ~/.ssh/ssh_key \
+            -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null \
+            -o ProxyCommand="ssh -i ~/.ssh/ssh_key -W %h:%p -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $SSH_USER@$SSH_HOST_NGINX" \
+            src/docker-compose.backend.yml "$SSH_USER@$SSH_HOST_BACKEND:docker-compose.yml"
+
+      - name: Deploy backend with GHCR login (via nginx bastion)
+        run: |
+          ssh -v -i ~/.ssh/ssh_key \
+            -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null \
+            -o ProxyCommand="ssh -i ~/.ssh/ssh_key -W %h:%p -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $SSH_USER@$SSH_HOST_NGINX" \
+            "$SSH_USER@$SSH_HOST_BACKEND" << EOF
+            set -euo pipefail
+            # Log in to GHCR so docker compose can pull private images
+            echo "$CR_PAT" | sudo docker login ghcr.io -u "$DOCKER_GITHUB_USERNAME" --password-stdin
+            # Pull and start the backend service
+            sudo docker compose pull
+            sudo docker compose up -d
+          EOF
+        env:
+          CR_PAT: ${{ secrets.CR_PAT }}
+          DOCKER_GITHUB_USERNAME: ${{ secrets.DOCKER_GITHUB_USERNAME }}
+
+  deploy-nginx:
+    needs: deploy-backend
+    runs-on: ubuntu-latest
+    env:
+      SSH_USER: ${{ secrets.SSH_USER }}
+      SSH_HOST: ${{ secrets.SSH_HOST_NGINX }}
+      CR_PAT: ${{ secrets.CR_PAT }}
+      DOCKER_GITHUB_USERNAME: ${{ secrets.DOCKER_GITHUB_USERNAME }}
+
+    steps:
+      - name: Check Out Repository
+        uses: actions/checkout@v4
+
+      - name: Validate nginx deploy secrets
+        run: |
+          [[ -n "$SSH_USER" ]] || { echo "Missing secret: SSH_USER"; exit 1; }
+          [[ -n "$SSH_HOST" ]] || { echo "Missing secret: SSH_HOST_NGINX"; exit 1; }
+          [[ -n "$CR_PAT" ]] || { echo "Missing secret: CR_PAT"; exit 1; }
+          [[ -n "$DOCKER_GITHUB_USERNAME" ]] || { echo "Missing secret: DOCKER_GITHUB_USERNAME"; exit 1; }
+          [[ -n "${{ secrets.BACKEND_PRIVATE_IP }}" ]] || { echo "Missing secret: BACKEND_PRIVATE_IP"; exit 1; }
+
+      - name: Add SSH key to runner
+        run: |
+          mkdir -p ~/.ssh/
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/ssh_key
+          chmod 600 ~/.ssh/ssh_key
+          ssh-keygen -l -f ~/.ssh/ssh_key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Create .env file
+        run: |
+          echo "GITHUB_OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" > .env
+          echo "BACKEND_PRIVATE_IP=${{ secrets.BACKEND_PRIVATE_IP }}" >> .env
+
+      - name: Transfer .env file to nginx VM
+        run: |
+          scp -v -i ~/.ssh/ssh_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null .env $SSH_USER@$SSH_HOST:.env
+
+      - name: Transfer Docker Compose file to nginx VM
+        run: |
+          scp -v -i ~/.ssh/ssh_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null src/docker-compose.nginx.yml $SSH_USER@$SSH_HOST:docker-compose.yml
+
+      - name: Deploy nginx with GHCR login
+        run: |
+          ssh -v -i ~/.ssh/ssh_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $SSH_USER@$SSH_HOST << EOF
+            set -euo pipefail
+            # Log in to GHCR so docker compose can pull private images
+            echo "$CR_PAT" | sudo docker login ghcr.io -u "$DOCKER_GITHUB_USERNAME" --password-stdin
+            # Pull and start the nginx service
+            sudo docker compose pull
+            sudo docker compose up -d
+          EOF
+        env:
+          CR_PAT: ${{ secrets.CR_PAT }}
+          DOCKER_GITHUB_USERNAME: ${{ secrets.DOCKER_GITHUB_USERNAME }}

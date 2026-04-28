@@ -1,27 +1,33 @@
-# Awsome recipe cookbook
-### Demo DevOps repository for use in teachings in It-architechture, cloud and agil udvikling at EK ITA Spring 2026
+# Things about how to run newest and hottest - azure with nginx with docker
+use
+az group delete --name rg-ostemadprinsesse-cookbook --yes
+to tear down the ressource group
 
-This is the "Awsome recipe cookbook" repository. It is not meant for production as it contains several security vulnerabilities and problematic parts on purpose. 
+stay tuned to know if we will get it to work lol
 
-## How to get started
 
-Each branch is a tutorial in a different topic based on the same Flask application as in the `main` branch. 
 
-One way to follow along is by:
+# Awesome recipe cookbook
+Demo DevOps repository for use in teachings in It-architechture, cloud and agil udvikling at EK ITA Spring 2026
 
-1. Forking the repository to your own account.
+This is the "Awsome recipe cookbook" repository. It is not meant for production as it contains several security vulnerabilities and problematic parts on purpose.
 
-2. Cloning the repository to your local machine.
+## Nginx Proxy (proxy) branch
 
-3. Checking out the branch you are interested in (e.g. `git checkout <branch_name>`).
+You're currently on the **proxy** branch, which demonstrates the use of nginx proxy and backend run through a docker-compose file.
 
-4. Following the instructions in the README of the branch.
+[![linting](https://github.com/cookbookio/awsome_recipe_cookbook/actions/workflows/linting.yml/badge.svg?branch=linting)](https://github.com/cookbookio/awsome_recipe_cookbook/actions/workflows/linting.yml)
+---
 
-5. You can now push changes to your own repository. 
+## Get started
 
-## Pull requests
+```
+git checkout proxy
+cd src
+docker-compose -f docker-compose.prod.yml up --build
+```
 
-If you have any suggestions or improvements to the tutorials, feel free to open a pull request.
+Look at the `/src` directory and the network/backend directories.
 
 ---
 ## ⚠️  SECURITY VULNERABILITIES - EDUCATIONAL PURPOSE ONLY ⚠️
