@@ -8,6 +8,11 @@ set -euo pipefail
 # Run interactively the first time:   bash infrastructure/setup_azure_vms.sh
 # Safe to re-run: VM and resource creation is idempotent; existing resources are reused
 
+if [[ "${1:-}" == "--teardown" ]]; then
+  shift
+  exec "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/teardown_azure_vms.sh" "$@"
+fi
+
 RESOURCE_GROUP="${RESOURCE_GROUP:-rg-ostemadprinsesse-cookbook}"
 LOCATION="${LOCATION:-swedencentral}"
 VNET_NAME="${VNET_NAME:-cookbook-vnet}"
@@ -89,7 +94,7 @@ still burning credits, but no longer receiving deploys).
 
 What to do:
   1. Ask $CURRENT_OWNER to run on their machine:
-       bash infrastructure/setup_azure_vms.sh --teardown
+       bash infrastructure/teardown_azure_vms.sh
      That deletes their Azure resources and clears the lock.
   2. Or, if you know the lock is stale (VMs already gone), override:
        FORCE=1 bash infrastructure/setup_azure_vms.sh
@@ -304,7 +309,7 @@ GitHub secrets set on $GITHUB_REPO:
   (CR_PAT and DOCKER_GITHUB_USERNAME must be set manually in GitHub if using private GHCR images)
 
 To tear down this deployment later, run:
-  bash infrastructure/setup_azure_vms.sh --teardown
+  bash infrastructure/teardown_azure_vms.sh
 
 Push to IaC branch to trigger the deploy pipeline.
 After the deploy completes, the app will be live at:
